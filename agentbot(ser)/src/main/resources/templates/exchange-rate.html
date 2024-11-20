@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>외화 구매 및 판매</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/css/common.css">
+    <style>
+        body {
+            background-color: #f4f4f9;
+            margin: 0;
+        }
+        .exchange-container {
+            max-width: 700px;
+            margin: 70px auto;
+            margin-top: 100px;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+        .exchange-container h2, .exchange-container h3 {
+            text-align: center;
+            color: #333;
+        }
+        .exchange-form-group {
+            margin-bottom: 20px;
+            position: relative;
+            width: 600px;
+        }
+        .exchange-label {
+            display: block;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .exchange-input{
+            width: 106.5%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .exchange-select{
+            width: 110%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .exchange-button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease-in-out;
+        }
+        .exchange-button:hover {
+            background-color: #0056b3;
+        }
+        .exchange-rates {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+        .exchange-rates table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .exchange-rates th, .exchange-rates td {
+            text-align: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        .exchange-rates th {
+            background-color: #007bff;
+            color: white;
+        }
+        .exchange-rates td {
+            background-color: #fdfdfd;
+        }
+        .error-message {
+            color: red;
+            text-align: center;
+        }
+        .small-text {
+            font-size: 12px;
+            color: #888;
+            margin-top: 12px;
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .exchange-slider {
+
+            width: 110%; /* 슬라이더 폭 전체 */
+
+        }
+    </style>
+</head>
+<body>
+<div th:replace="~{partials/navbar :: navbar}"></div>
+
+<div class="exchange-container">
+    <h2>외화 구매 및 판매</h2>
+
+    <!-- 환율 우대 슬라이더 -->
+    <!-- 슬라이더 추가 및 우대율 UI -->
+    <div class="exchange-form-group">
+        <label for="discount-rate" class="exchange-label">환율 우대율 설정</label>
+        <input type="range" id="discount-rate" min="0" max="100" value="0" step="5" class="exchange-slider" oninput="updateDiscountRate()">
+        <p>우대율: <span id="discount-value">0</span>%</p>
+    </div>
+
+
+    <div class="exchange-rates" id="exchange-rates">
+        <h3>실시간 환율</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>통화</th>
+                <th>기본 환율 (KRW 기준)</th>
+                <th>사실 때</th>
+                <th>파실 때</th>
+            </tr>
+            </thead>
+            <tbody id="rates-table-body">
+            <tr>
+                <td colspan="2">불러오는 중...</td>
+            </tr>
+            </tbody>
+        </table>
+        <p id="error-message" class="error-message" style="display: none;">환율 데이터를 불러오는 데 실패했습니다.</p>
+    </div>
+
+    <form id="alert-form">
+        <div class="exchange-form-group">
+            <label for="currency" class="exchange-label">목표 환율을 설정할 통화를 선택하세요</label>
+            <select id="currency" class="exchange-select" required aria-label="통화 선택">
+                <option value="USD">USD (미국 달러)</option>
+                <option value="EUR">EUR (유로)</option>
+                <option value="JPY">JPY (일본 엔)</option>
+            </select>
+        </div>
+
+        <div class="exchange-form-group">
+            <label for="target-rate" class="exchange-label">목표 환율을 입력하세요</label>
+            <input type="number" id="target-rate" class="exchange-input" required placeholder="목표 환율을 입력하세요" step="0.01" aria-label="목표 환율">
+        </div>
+
+        <div class="exchange-form-group">
+            <label for="transaction-type" class="exchange-label">구매/판매 선택</label>
+            <select id="transaction-type" class="exchange-select" required aria-label="구매 또는 판매 선택">
+                <option value="buy">구매</option>
+                <option value="sell">판매</option>
+            </select>
+        </div>
+
+        <div class="exchange-form-group">
+            <label for="amount" class="exchange-label">금액을 입력하세요</label>
+            <input type="number" id="amount" class="exchange-input" required placeholder="원하는 금액을 입력하세요" step="1" aria-label="금액 입력">
+            <span id="scaled-deposit" class="small-text">잔액 계산 중...</span>
+        </div>
+
+        <button type="submit" class="exchange-button">목표 설정</button>
+    </form>
+</div>
+
+<script>
+
+    let feeRate = 0.03; // 기본 수수료 비율 (3%)
+    let discountRate = 0; // 우대율 (%)
+
+    // 우대율 업데이트
+    function updateDiscountRate() {
+        const slider = document.getElementById('discount-rate');
+        const discountDisplay = document.getElementById('discount-value');
+        discountRate = slider.value / 100; // 슬라이더 값 (0~50)을 0~0.5로 변환
+        discountDisplay.textContent = slider.value;
+
+        // 환율 정보 업데이트
+        fetchExchangeRates();
+    }
+
+    // 실시간 환율 불러오기
+    function fetchExchangeRates() {
+        fetch('http://localhost:8001/get_exchange_rate')
+            .then(response => response.json())
+            .then(data => {
+                const ratesTableBody = document.getElementById('rates-table-body');
+                const errorMessage = document.getElementById('error-message');
+                const rates = data.rates;
+
+                if (rates) {
+                    let tableRows = '';
+
+                    // 각 통화에 대해 매수/매도 가격 계산
+                    Object.entries(rates).forEach(([currency, rate]) => {
+                        const effectiveFeeRate = feeRate * (1 - discountRate); // 우대율 적용
+                        const buyRate = (rate * (1 + effectiveFeeRate)).toFixed(2); // 매수 가격
+                        const sellRate = (rate * (1 - effectiveFeeRate)).toFixed(2); // 매도 가격
+
+                        tableRows += `
+                        <tr>
+                            <td>${currency}</td>
+                            <td>${rate} KRW</td>
+                            <td>${buyRate} KRW</td>
+                            <td>${sellRate} KRW</td>
+                        </tr>
+                    `;
+                    });
+
+                    ratesTableBody.innerHTML = tableRows;
+                    errorMessage.style.display = 'none';
+                } else {
+                    throw new Error('환율 데이터를 처리할 수 없습니다.');
+                }
+            })
+            .catch(error => {
+                console.error('환율 데이터를 가져오는 중 오류 발생:', error);
+                document.getElementById('error-message').style.display = 'block';
+                document.getElementById('rates-table-body').innerHTML = `
+                <tr>
+                    <td colspan="4">환율 데이터를 불러오는 데 실패했습니다.</td>
+                </tr>
+            `;
+            });
+    }
+
+
+    // 내 예금 잔액 불러오기
+    function fetchDepositInfo() {
+        fetch('/asset-data')
+            .then(response => response.json())
+            .then(data => {
+                const scaledDeposit = document.getElementById('scaled-deposit');
+                const depositHoldings = data.depositHoldings * 10000; // 10,000배 곱하기
+                scaledDeposit.textContent = `예금 잔액: ${depositHoldings.toLocaleString()} KRW`;
+            })
+            .catch(error => {
+                console.error('예금 데이터를 가져오는 중 오류 발생:', error);
+                document.getElementById('scaled-deposit').textContent = '잔액 불러오기 실패';
+            });
+    }
+
+    // 폼 제출 핸들러
+    document.getElementById('alert-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const currency = document.getElementById('currency').value;
+        const targetRate = parseFloat(document.getElementById('target-rate').value);
+        const transactionType = document.getElementById('transaction-type').value;
+        const amount = parseFloat(document.getElementById('amount').value);
+
+        const alertData = {
+            currency: currency,
+            target_rate: targetRate,
+            action: transactionType,
+            amount: amount
+        };
+
+        fetch('/set_target_rate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(alertData)
+        })
+            .then(response => response.json())
+            .then(data => {
+                alert('목표가 설정되었습니다!');
+                document.getElementById('alert-form').reset(); // 폼 초기화
+            })
+            .catch(error => {
+                alert('목표 설정에 실패했습니다.');
+                console.error(error);
+            });
+    });
+
+    // 페이지 로드 시 환율과 예금 정보 가져오기
+    window.onload = function() {
+        fetchExchangeRates();
+        fetchDepositInfo();
+    };
+</script>
+
+</body>
+</html>

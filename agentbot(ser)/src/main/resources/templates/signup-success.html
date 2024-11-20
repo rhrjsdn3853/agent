@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회원가입 성공</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/css/common.css"> <!-- 공통 스타일 -->
+    <style>
+        body.custom-body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f4f8;
+            padding: 20px;
+        }
+        .custom-container {
+            text-align: center;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .custom-icon {
+            font-size: 50px;
+            color: #28a745;
+            margin-bottom: 20px;
+        }
+        .custom-container h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        .custom-container p {
+            color: #555;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        .custom-container a {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .custom-container a:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body class="custom-body">
+<div th:replace="~{partials/navbar :: navbar}"></div>
+<div class="custom-container">
+    <i class="fas fa-check-circle custom-icon"></i>
+    <h1>회원가입이 완료되었습니다!</h1>
+    <p>로그인 페이지로 이동하려면 아래 버튼을 클릭하세요.</p>
+    <a href="/login">로그인 페이지로 이동</a>
+</div>
+</body>
+</html>
