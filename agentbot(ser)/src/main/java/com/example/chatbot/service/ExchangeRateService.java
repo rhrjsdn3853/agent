@@ -11,7 +11,7 @@ public class ExchangeRateService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     public Map<String, Object> getExchangeRates() {
-        String apiUrl = "http://localhost:8001/get_exchange_rate"; // FastAPI URL
+        String apiUrl = "http://3.107.180.37/get_exchange_rate"; // FastAPI URL
 
         try {
             // FastAPI에서 JSON 데이터를 가져옵니다.

@@ -193,7 +193,7 @@
 
     // 실시간 환율 불러오기
     function fetchExchangeRates() {
-        fetch('http://localhost:8001/get_exchange_rate')
+        fetch('http://3.107.180.37:8001/get_exchange_rate')
             .then(response => response.json())
             .then(data => {
                 const ratesTableBody = document.getElementById('rates-table-body');

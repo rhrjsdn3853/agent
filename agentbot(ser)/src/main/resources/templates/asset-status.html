@@ -401,7 +401,7 @@
             $('#analysisResult').hide();
 
             $.ajax({
-                url: 'http://localhost:8001/analyze-user',
+                url: 'http://3.107.180.37:8001/analyze-user',
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({ user_Id: $('#userId').val() }),

@@ -8,7 +8,7 @@ import org.json.JSONObject;
 public class PythonModelService {
 
     public String getUserCluster(String userId) {
-        String apiUrl = "http://localhost:8001/analyze-user";  // 엔드포인트에 "/analyze-user" 추가
+        String apiUrl = "http://3.107.180.37/analyze-user";  // 엔드포인트에 "/analyze-user" 추가
         RestTemplate restTemplate = new RestTemplate();
 
         // 요청할 JSON 데이터 설정

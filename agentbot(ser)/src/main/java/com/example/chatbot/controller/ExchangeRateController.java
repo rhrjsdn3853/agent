@@ -14,7 +14,7 @@ public class ExchangeRateController {
 
     @GetMapping("/exchange-rate")
     public String getExchangeRatePage(Model model) {
-        String fastApiUrl = "http://localhost:8001/get_exchange_rate";
+        String fastApiUrl = "http://3.107.180.37/get_exchange_rate";
 
         try {
             // FastAPI에서 데이터를 가져옵니다.
