@@ -1,12 +1,20 @@
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Depends
 from pydantic import BaseModel
 from langchain_community.llms import OpenAI
+from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain.text_splitter import CharacterTextSplitter
+from langchain_community.document_loaders import CSVLoader
 import os
 import requests
 from dotenv import load_dotenv
 import pandas as pd
+from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy import create_engine
+from sqlalchemy import Column, String, Float, BigInteger
+from sqlalchemy.ext.declarative import declarative_base
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
@@ -14,8 +22,24 @@ from sklearn.cluster import KMeans
 import numpy as np
 from apscheduler.schedulers.background import BackgroundScheduler
 
+
+
+DATABASE_URL = "mysql+pymysql://gunwoo2:woorifisa3!W@118.67.131.22:3306/gunwoo"
+Base = declarative_base()
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 # Load environment variables
 load_dotenv()
+# 외화 보유 데이터를 저장하는 임시 딕셔너리 (키: user_id, 값: 외화 보유 리스트)
+foreign_currency_data = {}
+
 
 app = FastAPI()
 
@@ -35,7 +59,7 @@ if api_key is None:
 
 # OpenAI model initialization
 llm = OpenAI(api_key=api_key)
-
+embedding = OpenAIEmbeddings(api_key=api_key)
 # Load CSV data
 csv_path = os.getenv("CSV_PATH", "woori_bank_savings.csv")
 woori_bank_savings = pd.read_csv(csv_path).to_dict(orient='records')
@@ -43,8 +67,26 @@ woori_bank_savings = pd.read_csv(csv_path).to_dict(orient='records')
 # Store user asset information and responses
 user_asset_info = {}
 user_responses = {}
-# 알림 저장소
-notifications = []
+current_dir = os.path.dirname(os.path.abspath(__file__))
+savings_vectorstore = Chroma("savings_vectorstore", embedding_function=embedding)
+cards_vectorstore = Chroma("cards_vectorstore", embedding_function=embedding)
+funds_vectorstore = Chroma("funds_vectorstore", embedding_function=embedding)
+
+def load_and_embed_csv(file_path, vectorstore):
+    loader = CSVLoader(file_path=file_path)
+    documents = loader.load()
+    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    docs = text_splitter.split_documents(documents)
+    vectorstore.add_documents(docs)
+
+savings_csv_path = os.path.join(current_dir, "woori_bank_savings.csv")
+cards_csv_path = os.path.join(current_dir, "cards.csv")
+funds_csv_path = os.path.join(current_dir, "funds.csv")
+
+
+load_and_embed_csv(savings_csv_path, savings_vectorstore)
+load_and_embed_csv(cards_csv_path, cards_vectorstore)
+load_and_embed_csv(funds_csv_path, funds_vectorstore)
 
 # 환율 API URL
 API_URL = f"https://api.exchangerate-api.com/v4/latest/USD?apikey={os.getenv('EXCHANGE_API_KEY')}"
@@ -76,12 +118,187 @@ class ResponseInfo(BaseModel):
 class UserId(BaseModel):
     user_Id: str
 
-# 환율 관련 요청 모델
 class UserRateRequest(BaseModel):
+    user_id: str  # 사용자 ID 추가
     currency: str  # 목표 환율 설정(엔, 달러, 유로 등)
     target_rate: float  # 목표 환율
     action: str  # "buy" 또는 "sell"
     amount: float  # 목표 금액
+
+
+class UserForeignCurrency(BaseModel):
+    user_id: str
+    currency: str
+    balance: float = 0.0
+    total_spent: float = 0.0
+    total_converted_krw: float = 0.0
+
+class UserForeignCurrencyDB(Base):
+    __tablename__ = "user_foreign_currency"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)  # 고유 ID
+    user_id = Column(String(50), nullable=False)                  # 사용자 ID
+    currency = Column(String(10), nullable=False)                 # 통화 (USD, EUR 등)
+    balance = Column(Float, nullable=False, default=0.0)          # 보유 외화 잔액
+    total_spent = Column(Float, nullable=False, default=0.0)      # 총 지출 금액 (KRW)
+    total_converted_krw = Column(Float, nullable=False, default=0.0)  # 총 환전 금액 (KRW)
+
+    def __repr__(self):
+        return (
+            f"<UserForeignCurrencyDB(user_id={self.user_id}, currency={self.currency}, "
+            f"balance={self.balance}, total_spent={self.total_spent}, total_converted_krw={self.total_converted_krw})>"
+        )
+def initialize_user_deposit(user_id: str, db: Session):
+    """
+    사용자의 예금 잔액(deposit)을 DB에서 불러와 초기화합니다.
+    """
+    global user_asset_info
+
+    # DB에서 사용자 예금 정보 가져오기
+    result = db.execute(
+        f"SELECT deposit_holdings FROM user_profile WHERE user_id = '{user_id}'"
+    ).fetchone()
+
+    if result:
+        deposit = result[0]  # 실 단위로 저장된 예금 잔액 그대로 사용
+        user_asset_info = {"deposit": deposit}
+    else:
+        # 사용자 정보가 없을 경우 기본값 설정
+        user_asset_info = {"deposit": 0}
+
+    print(f"[INFO] User {user_id} deposit initialized: {user_asset_info['deposit']}")
+
+def get_current_exchange_rate(currency: str) -> float:
+    response = requests.get(API_URL)
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail="환율 데이터를 가져오는 데 실패했습니다.")
+    
+    rates = response.json().get("rates", {})
+    if currency not in rates:
+        raise HTTPException(status_code=400, detail=f"{currency}에 대한 환율 정보를 찾을 수 없습니다.")
+    
+    return rates[currency]
+
+
+
+
+
+@app.get("/foreign-currency/{user_id}/holdings", response_model=list[UserForeignCurrency])
+def get_user_foreign_holdings(user_id: str, db: Session = Depends(get_db)):
+    """
+    특정 사용자의 외화 보유 정보를 조회합니다.
+    """
+    initialize_user_deposit(user_id, db)  # 데이터 초기화
+    holdings = db.query(UserForeignCurrencyDB).filter(UserForeignCurrencyDB.user_id == user_id).all()
+
+    if not holdings:
+        raise HTTPException(status_code=404, detail="사용자의 외화 보유 데이터를 찾을 수 없습니다.")
+
+    return [
+        UserForeignCurrency(
+            user_id=holding.user_id,
+            currency=holding.currency,
+            balance=holding.balance,
+            total_spent=holding.total_spent,
+            total_converted_krw=holding.total_converted_krw
+        )
+        for holding in holdings
+    ]
+
+
+@app.get("/foreign-currency/{user_id}/holdings", response_model=list[UserForeignCurrency])
+def get_user_foreign_holdings(user_id: str, db: Session = Depends(get_db)):
+    """
+    특정 사용자의 외화 보유 정보를 조회합니다.
+    """
+    initialize_user_deposit(user_id, db)  # 데이터 초기화
+    holdings = db.query(UserForeignCurrencyDB).filter(UserForeignCurrencyDB.user_id == user_id).all()
+
+    if not holdings:
+        raise HTTPException(status_code=404, detail="사용자의 외화 보유 데이터를 찾을 수 없습니다.")
+
+    return [
+        UserForeignCurrency(
+            user_id=holding.user_id,
+            currency=holding.currency,
+            balance=holding.balance,
+            total_spent=holding.total_spent,
+            total_converted_krw=holding.total_converted_krw
+        )
+        for holding in holdings
+    ]
+
+@app.post("/foreign-currency/set-target")
+def process_target_rate(user_rate: UserRateRequest, db: Session = Depends(get_db)):
+    """
+    외화 목표 거래를 처리합니다 (구매/판매).
+    거래 체결 시 알림을 생성합니다.
+    """
+    # 사용자의 예금 잔액 초기화
+    initialize_user_deposit(user_rate.user_id, db)
+
+    # 예금 잔액 확인
+    deposit = user_asset_info["deposit"]
+
+    # 실시간 환율 가져오기 (구매 시 필요)
+    current_rate = get_current_exchange_rate(user_rate.currency)
+
+    # 거래 계산 (구매 시 실시간 환율로 계산)
+    if user_rate.action == "buy":
+        transaction_amount_krw = user_rate.amount * current_rate
+    elif user_rate.action == "sell":
+        transaction_amount_krw = user_rate.amount * user_rate.target_rate
+    else:
+        raise HTTPException(status_code=400, detail="유효하지 않은 거래 유형입니다.")
+
+    # 거래 유형 처리
+    if user_rate.action == "buy":
+        if deposit < transaction_amount_krw:
+            raise HTTPException(status_code=400, detail="예금 잔액이 부족합니다.")
+        
+        # 예금 차감 및 DB 반영
+        user_asset_info["deposit"] -= transaction_amount_krw
+        db.execute(
+            f"UPDATE user_profile SET deposit_holdings = {user_asset_info['deposit']} WHERE user_id = '{user_rate.user_id}'"
+        )
+
+        # 외화 추가
+        holding = db.query(UserForeignCurrencyDB).filter(
+            UserForeignCurrencyDB.user_id == user_rate.user_id,
+            UserForeignCurrencyDB.currency == user_rate.currency
+        ).first()
+
+        if not holding:
+            raise HTTPException(status_code=400, detail=f"{user_rate.currency} 통화 보유 데이터가 없습니다.")
+
+        holding.balance += user_rate.amount
+        db.commit()
+
+    elif user_rate.action == "sell":
+        # 외화 잔액 차감 및 DB 반영
+        holding = db.query(UserForeignCurrencyDB).filter(
+            UserForeignCurrencyDB.user_id == user_rate.user_id,
+            UserForeignCurrencyDB.currency == user_rate.currency
+        ).first()
+
+        if not holding or holding.balance < user_rate.amount:
+            raise HTTPException(status_code=400, detail="외화 보유 잔액이 부족합니다.")
+
+        holding.balance -= user_rate.amount
+
+        # 예금 증가 (판매 금액을 기존 예금 잔액에 더하기)
+        user_asset_info["deposit"] += transaction_amount_krw
+        db.execute(
+            f"UPDATE user_profile SET deposit_holdings = {user_asset_info['deposit']} WHERE user_id = '{user_rate.user_id}'"
+        )
+        db.commit()
+
+    # 알림 전송
+    notify_user(user_rate, current_rate)
+
+    return {"message": f"{user_rate.currency} 거래 성공적으로 처리되었습니다."}
+
+
 
 
 @app.post("/set_asset_info")
@@ -95,7 +312,7 @@ def set_asset_info(asset_info: AssetInfo):
         except ValueError:
             return "정보 없음"  # 변환이 불가능한 값에 대해서는 "정보 없음" 반환
 
-    # 자산 정보를 10000배 곱한 뒤 저장 (소수점 처리 및 천 단위 구분)
+
     deposit = clean_and_convert(asset_info.deposit)
     savings = clean_and_convert(asset_info.savings)
     fund = clean_and_convert(asset_info.fund)
@@ -122,17 +339,14 @@ def sendAssetInfoToChatbot(asset_info: dict):
     print(f"Sending asset info to chatbot: {asset_info}")  # 실제로는 Langchain 모델에 전달
 
 @app.post("/recommend_savings")
-def recommend_savings(request: UserRequest):
+def recommend_products(request: UserRequest):
+    """
+    사용자의 질문에 대해 적절한 금융 상품을 추천합니다.
+    """
     try:
         question = request.question.strip()
 
-        # Convert saving products to a single string
-        product_info_str = "\n".join([
-            f"{item['상품명']}: 금리 {item['금리']}%, 조건 {item['조건']}, 혜택 {item['혜택']}"
-            for item in woori_bank_savings
-        ])
-
-        # Include asset info in the prompt if available
+        # 사용자 자산 정보 포함
         if user_asset_info:
             asset_info_str = (
                 f"사용자의 자산 내역은 다음과 같습니다 - 예금: {user_asset_info['deposit']}원, "
@@ -142,25 +356,54 @@ def recommend_savings(request: UserRequest):
         else:
             asset_info_str = ""
 
-        # Identify if the question is finance-related
-        keywords = ["은행", "적금", "금리", "상품", "돈", "이자", "자산", "예금"]
+        # 금융 관련 질문 확인
+        keywords = ["은행", "적금", "금리", "상품", "돈", "이자", "자산", "예금", "펀드"]
         is_financial_question = any(keyword in question.lower() for keyword in keywords)
 
         if is_financial_question:
-            prompt = (
-                f"{asset_info_str} 너는 금융 에이전트야 질문에 대해 100자 미만으로 답변해주고 문장은 무조건 마무리해줘 "
-                f"답변은 본론부터 시작하고, 금융 상품 정보는 다음과 같아: "
-                f"{product_info_str}. 질문: {question}?"
-            )
-            response = llm(prompt)
-             # '\n' 제거
-            response = response.replace("\n", " ")  # 줄 바꿈 제거하고 공백으로 대체
-        else:
-            response = "죄송합니다. 은행 및 금융 관련 질문에만 답변을 제공할 수 있습니다."
+            # 각 파일에서 질문과 관련된 정보 검색
+            savings_results = savings_vectorstore.similarity_search(question, k=3)
+            cards_results = cards_vectorstore.similarity_search(question, k=3)
+            funds_results = funds_vectorstore.similarity_search(question, k=3)
 
-        return {"response": response}
+            # 검색 결과 정리
+            savings_info = "\n".join([f"적금 추천: {doc.page_content}" for doc in savings_results])
+            cards_info = "\n".join([f"카드 추천: {doc.page_content}" for doc in cards_results])
+            funds_info = "\n".join([f"펀드 추천: {doc.page_content}" for doc in funds_results])
+
+            # 금융 상품 정보 요약
+            product_info_str = (
+                f"적금 정보:\n{savings_info}\n\n카드 정보:\n{cards_info}\n\n펀드 정보:\n{funds_info}"
+            )
+
+            first_prompt = (
+                f"사용자의 자산 내역은 다음과 같습니다: {asset_info_str}. "
+                f"금융 상품 정보는 다음과 같습니다: {product_info_str}. "
+                f"너는 금융 에이전트야. "
+                f"사용자의 자산 내역을 비율로 계산하고, 비율에 따라 재무 상태를 간단히 분석해. "
+                f"200자 이내로 답변하고, 필요하다면 핵심 상품 하나만 추천해. "
+                f"추가 정보는 포함하지 말고, 추가 요청이 없으면 답변을 마쳐."
+                f"질문: {question}?"
+            )
+            first_response = llm(first_prompt).replace("\n", " ")
+
+            # 1차 응답을 바탕으로 2차 응답 생성
+            second_prompt = (
+                f"다음은 내가 생성한 답변이야: {first_response}. "
+                f"이 답변을 기반으로 간결하고 핵심적인 내용만 남기고, 불필요한 정보를 제거해. "
+                f"200자 이하로 다시 작성하고, 추가 설명은 하지 마."
+                f"만약 상품을 여러개 추천하면 그 중 하나만 추천해줘."
+            )
+            second_response = llm(second_prompt).replace("\n", " ")
+
+        else:
+            second_response = "죄송합니다. 은행 및 금융 관련 질문에만 답변을 제공할 수 있습니다."
+            
+
+        return {"response": second_response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 
 @app.post("/analyze-user")
 def analyze_user(user: UserId):
@@ -290,16 +533,21 @@ def check_target_rate(user_rate: UserRateRequest):
 
 
 
-def notify_user(user_rate, current_rate):
+def notify_user(user_rate: UserRateRequest, current_rate: float):
+    """
+    거래 완료 시 알림 생성 및 전송.
+    """
     try:
         notification = {
             "userId": user_rate.user_id,
-            "message": f"목표 환율 {user_rate.target_rate}에 거래 완료하였습니다! 현재 환율: {current_rate:.2f}",
+            "message": f"거래 완료: {user_rate.amount} {user_rate.currency} 거래가 체결되었습니다! "
+                       
         }
-        response = requests.post("http://localhost:8080/notifications/create", json=notification)
+        response = requests.post("http://localhost:8001/notifications/create", json=notification)
         response.raise_for_status()  # 요청 실패 시 예외 발생
     except requests.exceptions.RequestException as e:
-        print(f"Failed to send notification to Spring Boot: {e}")
+        print(f"[ERROR] 알림 전송 실패: {e}")
+
 
 
 # APScheduler 설정
@@ -318,54 +566,3 @@ scheduler.start()
 @app.on_event("shutdown")
 def shutdown_event():
     scheduler.shutdown()
-
-
-@app.post("/notifications")
-def create_notification(notification: dict):
-    """
-    알림 데이터를 저장하는 엔드포인트.
-    고유 ID를 생성하여 알림에 추가합니다.
-    """
-    notification_id = len(notifications) + 1  # 고유 ID 생성
-    notification["id"] = notification_id
-    notification["read"] = False  # 읽음 상태 초기화
-    notifications.append(notification)
-    print("알림 저장:", notification)
-    return {"status": "success", "data": notification}
-
-
-@app.get("/notifications/{user_id}")
-def get_notifications(user_id: str):
-    """
-    특정 사용자의 알림 목록을 반환하는 엔드포인트.
-    """
-    user_notifications = [n for n in notifications if n["userId"] == user_id]
-    return {"status": "success", "data": user_notifications}
-
-@app.post("/notifications/mark-as-read/{notification_id}")
-def mark_as_read(notification_id: int):
-    """
-    특정 알림을 읽음 처리.
-    """
-    for notification in notifications:
-        if notification["id"] == notification_id:
-            notification["read"] = True
-            print("알림 읽음 처리:", notification)
-            return {"status": "success", "data": notification}
-    raise HTTPException(status_code=404, detail="Notification not found")
-
-@app.delete("/notifications/delete/{notification_id}")
-def delete_notification(notification_id: int):
-    """
-    특정 알림을 삭제하는 엔드포인트.
-    """
-    global notifications
-    before_count = len(notifications)
-    notifications = [n for n in notifications if n["id"] != notification_id]
-    after_count = len(notifications)
-
-    if before_count == after_count:
-        raise HTTPException(status_code=404, detail="Notification not found")
-
-    print(f"알림 삭제: ID {notification_id}")
-    return {"status": "success", "message": "Notification deleted successfully"}
