@@ -1,0 +1,44 @@
+<!-- navbar.html -->
+<div class="navbar" th:fragment="navbar">
+  <a href="/" class="navbar-logo">
+    <img src="https://simg.wooribank.com/img/mall/dep/%EB%8F%99%EA%B8%80%EC%9D%B4(294x294)_01%EC%98%88%EA%B8%88_%EC%9C%84%EB%B9%84%EA%BF%80%EB%A7%88%EC%BC%93.jpg" alt="로고" style="height: 50px; vertical-align: middle;">
+    <h1>woori-fi</h1>
+  </a>
+
+  <div class="button-wrapper">
+    <div class="button-container">
+      <a href="/chat" class="button">AGENT</a>
+      <div class="dropdown-container">
+        <a href="/product-list" class="dropdown-trigger">금융 상품</a>
+        <div class="dropdown-menu">
+          <a href="/product-list" class="dropdown-item">예·적금</a>
+          <a href="/product-list/card" class="dropdown-item">카드</a>
+          <a href="/product-list/fund" class="dropdown-item">펀드</a>
+        </div>
+      </div>
+      <a href="/asset-status" class="button">자산 현황</a>
+      <a href="/exchange-rate" class="button">외화 구매</a> <!-- 환율 설정 페이지 추가 -->
+      <a href="/news" class="button">추천 뉴스</a>
+      <a href="/qa" class="button">자주 묻는 질문</a>
+    </div>
+   \
+
+    <div class="auth-container">
+      <th:block th:if="${session.user != null}">
+        <a href="/profile" class="button"><i class="fas fa-user-edit icon"></i></a>
+        <a href="/logout" class="button"><i class="fas fa-sign-out-alt icon"></i></a>
+      </th:block>
+      <th:block th:if="${session.user == null}">
+        <a href="/login" class="button">
+          <i class="fas fa-user icon"></i> 로그인
+        </a>
+      </th:block>
+    </div>
+
+    <!-- 알림 아이콘 추가 -->
+
+  </div>
+</div>
+
+
+

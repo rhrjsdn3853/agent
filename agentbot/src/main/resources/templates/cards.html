@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>카드 상품</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/css/common.css">
+    <style>
+        body {
+            background-color: rgb(255, 255, 255);
+            margin: 0;
+        }
+
+        .container {
+            margin-top: 80px;
+            padding: 20px;
+            background-color: rgb(255, 255, 255);
+            border-radius: 10px;
+            max-width: 1000px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 28px;
+            color: #050000;
+            margin-bottom: 20px;
+        }
+
+        .search-bar {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .search-bar input {
+            width: 80%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .list-group {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .list-group-item {
+            background-color: rgb(255, 255, 255);
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .list-group-item.hidden {
+            display: none;
+        }
+
+        .list-group-item:hover {
+            background-color: #f1f9ff;
+            box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2);
+        }
+
+        .list-group-item h4 {
+            color: #007bff;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 24px;
+            text-align: center;
+        }
+
+        .load-more {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .load-more button {
+            background-color: #007bff;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+
+        .load-more button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .load-more button:active {
+            background-color: #004a99;
+        }
+
+        @media (min-width: 768px) {
+            .list-group {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }
+
+            h1 {
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div th:replace="~{partials/navbar :: navbar}"></div>
+
+<div class="container">
+    <h1>카드 상품</h1>
+
+    <!-- 검색 기능 -->
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="카드명 또는 상세 설명으로 검색하세요" onkeyup="filterCards()">
+    </div>
+
+    <div class="list-group">
+        <div th:each="card, iterStat : ${products}"
+             th:classappend="${iterStat.index >= 6 ? 'hidden' : ''}"
+             class="list-group-item">
+            <h4 th:text="${card.cardName}">카드명</h4>
+            <p><strong>연회비:</strong> <span th:text="${card.cardType}">카드 종류</span></p>
+            <p><strong>기준 실적:</strong> <span th:text="${card.annualFee}">기준 실적</span></p>
+            <p><strong>상세 설명:</strong> <span th:text="${card.details}">상세 설명</span></p>
+        </div>
+    </div>
+
+    <div class="load-more">
+        <button onclick="showMore()">더보기</button>
+    </div>
+</div>
+
+<script>
+    function showMore() {
+        const hiddenItems = document.querySelectorAll('.list-group-item.hidden');
+        hiddenItems.forEach((item, index) => {
+            if (index < 4) {
+                item.classList.remove('hidden');
+            }
+        });
+
+        if (document.querySelectorAll('.list-group-item.hidden').length === 0) {
+            document.querySelector('.load-more').style.display = 'none';
+        }
+    }
+
+    function filterCards() {
+        const searchInput = document.getElementById('searchInput').value.toLowerCase();
+        const items = document.querySelectorAll('.list-group-item');
+        let visibleCount = 0;
+
+        items.forEach(item => {
+            const cardName = item.querySelector('h4').textContent.toLowerCase();
+            const details = item.querySelector('p:nth-child(4) span').textContent.toLowerCase();
+
+            if (cardName.includes(searchInput) || details.includes(searchInput)) {
+                item.style.display = "";
+                if (visibleCount < 6) {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
+                }
+                visibleCount++;
+            } else {
+                item.style.display = "none";
+            }
+        });
+
+        const loadMoreButton = document.querySelector('.load-more button');
+        if (visibleCount > 6) {
+            loadMoreButton.style.display = "block";
+        } else {
+            loadMoreButton.style.display = "none";
+        }
+    }
+</script>
+</body>
+</html>

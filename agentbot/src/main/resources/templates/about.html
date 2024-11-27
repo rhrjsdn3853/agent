@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>경제 뉴스</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="/css/common.css">
+  <style>
+
+    body {
+      background-color: #ffffff; /* 전체 배경 흰색 */
+      margin: 0;
+    }
+
+    .content {
+      max-width: 1000px;
+      margin: 60px auto 40px;
+      padding: 20px;
+      background-color: #ffffff; /* content 배경 흰색 */
+    }
+
+    .content h1 {
+      font-size: 32px !important;
+      font-weight: bold;
+      text-align: center;
+      color: #000;
+      margin-bottom: 20px;
+    }
+
+    .news-container {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 15px; /* 카드 사이 간격 줄임 */
+    }
+
+    .news-card {
+      background-color: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      height: 100px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center; /* 세로 가운데 정렬 */
+      align-items: center; /* 가로 가운데 정렬 */
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .news-card.hidden {
+      display: none;
+    }
+
+    .news-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .news-title {
+      font-size: 22px;
+      font-weight: bold;
+      color: #000;
+      margin-bottom: 10px;
+      line-height: 1.4;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.3s;
+      text-decoration: none;
+    }
+
+    .news-title:hover {
+      color: #007bff;
+    }
+
+    .news-title i {
+      margin-left: 8px;
+      font-size: 14px;
+      color: #007bff;
+    }
+
+    .news-description {
+      font-size: 14px;
+      color: #555;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .news-source {
+      font-size: 20px;
+      color: #777;
+      text-align: center;
+      margin-top: 5px;
+    }
+
+    .load-more {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .load-more button {
+      background-color: #007bff;
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: bold;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.3s ease;
+    }
+
+    .load-more button:hover {
+      background-color: #0056b3;
+      transform: translateY(-2px);
+    }
+
+    .load-more button:active {
+      background-color: #004a99;
+    }
+
+    @media (min-width: 768px) {
+      .news-container {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px; /* 두 열로 배치 시 간격 줄임 */
+      }
+
+      .content h1 {
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div th:replace="~{partials/navbar :: navbar}"></div>
+
+<div class="content">
+  <h1>경제 뉴스</h1>
+  <div class="news-container">
+    <div th:each="news, iterStat : ${newsList}" class="news-card"
+         th:classappend="${iterStat.index >= 8 ? 'hidden' : ''}">
+      <!-- 제목을 텍스트와 출처로 분리 -->
+      <a th:href="${news.link}" target="_blank" class="news-title">
+        <span th:text="${#strings.substringBefore(news.title, '-')}">뉴스 제목</span>
+        <i class="fas fa-external-link-alt"></i>
+      </a>
+      <p class="news-source" th:text="${#strings.substringAfter(news.title, '-')}">출처</p>
+    </div>
+  </div>
+
+  <div class="load-more">
+    <button onclick="showMore()">더보기</button>
+  </div>
+</div>
+
+<script>
+  function showMore() {
+    const hiddenCards = document.querySelectorAll('.news-card.hidden');
+    hiddenCards.forEach((card, index) => {
+      if (index < 6) {
+        card.classList.remove('hidden');
+      }
+    });
+
+    if (document.querySelectorAll('.news-card.hidden').length === 0) {
+      document.querySelector('.load-more').style.display = 'none';
+    }
+  }
+</script>
+</body>
+</html>

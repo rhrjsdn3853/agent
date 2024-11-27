@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Interface</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/css/common.css">
+    <style>
+        body {
+            background-color: #ffffff;
+            padding-top: 180px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .main-container {
+            display: flex;
+            width: 1100px;
+            margin-top: 50px;
+        }
+
+        .summary-container {
+            width: 300px;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            margin-right: 20px;
+            height: 600px;
+            overflow-y: auto;
+        }
+
+        .chat-container {
+            width: 800px;
+            height: 600px;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-box {
+            height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 24px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            background-color: #ffffff;
+            position: relative;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .user-input {
+            width: calc(95% - 50px);
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .send-btn {
+            padding: 10px;
+            background: linear-gradient(135deg, #004ea2, #007dd9);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .send-btn i {
+            font-size: 24px;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 15px rgba(0, 125, 217, 0.5);
+        }
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        .message {
+            margin: 10px 0;
+            padding: 18px;
+            border-radius: 10px;
+            position: relative;
+            animation: messageSlideIn 0.5s ease-out;
+            word-wrap: break-word;
+            white-space: normal;
+        }
+
+        .user-message {
+            width: fit-content;
+            background-color: #007bff;
+            color: white;
+            text-align: right;
+            font-weight: bold;
+            border-radius: 20px 20px 0 20px;
+            margin-left: auto;
+            margin-right: 0;
+            animation: fadeInUser 0.3s ease;
+            word-wrap: break-word;
+            display: block;
+            padding: 12px 16px;
+        }
+
+        .bot-message {
+            background-color: #f1f1f1;
+            color: #333;
+            text-align: left;
+            margin-bottom: 0;
+            margin-top: 0;
+            border-radius: 20px 20px 20px 0;
+            animation: fadeInBot 0.3s ease;
+            display: inline-block;
+            max-width: 90%;
+            word-wrap: break-word;
+            white-space: normal;
+            padding: 12px 16px;
+        }
+
+        .chat-summary-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 4px;
+            height:22px;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+
+        .chat-summary-item span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 70%; /* 텍스트의 최대 너비를 제한 */
+            flex-grow: 1; /* 남은 공간을 차지하도록 설정 */
+            margin-right: 10px; /* 버튼과의 간격 추가 */
+        }
+
+        .chat-summary-item button {
+            background-color: #007dd9;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 10px;
+            height: 30px;
+        }
+
+        .chat-summary-item button:hover {
+            background-color: #005ea6;
+            box-shadow: 0 4px 8px rgba(0, 125, 217, 0.4);
+        }
+
+        .chat-summary-item button:active {
+            background-color: #004680;
+            transform: scale(0.95);
+        }
+
+
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(-10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUser {
+            0% { opacity: 0; transform: translateX(50px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes fadeInBot {
+            0% { opacity: 0; transform: translateX(-50px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+
+
+    </style>
+</head>
+<body>
+<div th:replace="~{partials/navbar :: navbar}"></div>
+
+<div class="summary-container">
+    <h3>이전 채팅 요약</h3>
+    <div id="summary-list">
+        <div th:each="summary : ${chatSummaries}">
+            <div>
+                <span class="text-ellipsis" th:text="${summary.title}"></span>
+                <button onclick="deleteChatSummary([[${summary.id}]], event)">삭제</button>
+            </div>
+        </div>
+    </div>
+
+<!-- 새로운 채팅 추가 버튼 -->
+    <div style="margin-top: 20px;">
+        <button id="new-chat-btn" style="width: 100%; padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            새 채팅 생성
+        </button>
+    </div>
+</div>
+    <div class="chat-container">
+        <form id="chat-form" onsubmit="return sendMessage(event)">
+            <div id="chat-box" class="chat-box">
+                <div class="message bot-message" th:text="${initialGreeting}">
+                    안녕하세요! 예금을 0원, 적금을 0원, 펀드상품을 0원, 대출을 0원 보유하고 계시네요. 총 자산은 0원입니다. 어떤 도움을 드릴까요?
+                </div>
+            </div>
+            <input type="text" id="user-input" class="user-input" placeholder="질문을 입력해주세요(EX: 자산 현황)">
+            <button type="submit" class="send-btn"><i class="fas fa-paper-plane"></i></button>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        const initialGreeting = localStorage.getItem("initialGreeting");
+        if (initialGreeting) {
+            appendBotMessage(initialGreeting);
+            localStorage.removeItem("initialGreeting");
+        }
+
+        loadChatSummaries();
+    });
+
+
+    function viewChatDetails(id) {
+        fetch(`/chat-summary/${id}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("대화 상세 정보 로드 실패");
+                }
+                return response.json();
+            })
+            .then(summary => {
+                const chatBox = document.getElementById("chat-box");
+                chatBox.innerHTML = ""; // 기존 채팅 내용 초기화
+
+                const userMessages = summary.userMessage.split("\n").filter(Boolean);
+                const botMessages = summary.botMessage.split("\n").filter(Boolean);
+
+                // 질문과 응답을 순서대로 매칭하여 표시
+                for (let i = 0; i < Math.max(userMessages.length, botMessages.length); i++) {
+                    if (i < userMessages.length) {
+                        const userMessageDiv = document.createElement("div");
+                        userMessageDiv.classList.add("message", "user-message");
+                        userMessageDiv.innerText = userMessages[i];
+                        chatBox.appendChild(userMessageDiv);
+                    }
+
+                    if (i < botMessages.length) {
+                        const botMessageDiv = document.createElement("div");
+                        botMessageDiv.classList.add("message", "bot-message");
+                        botMessageDiv.innerText = botMessages[i];
+                        chatBox.appendChild(botMessageDiv);
+                    }
+                }
+
+                chatBox.scrollTop = chatBox.scrollHeight; // 스크롤 하단으로 이동
+            })
+            .catch(error => console.error("Error loading chat details:", error));
+    }
+
+
+    function sendMessage(event) {
+        event.preventDefault();
+        const userInput = document.getElementById('user-input').value.trim();
+
+        if (!userInput) {
+            alert("메시지를 입력하세요."); // 빈 메시지 입력 방지
+            return;
+        }
+
+        // 사용자 메시지 화면에 추가
+        appendUserMessage(userInput);
+
+        // 입력창 초기화
+        document.getElementById('user-input').value = "";
+
+        // 서버에 메시지 전송
+        fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: userInput }),
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("서버 응답 실패");
+                }
+                return response.json();
+            })
+            .then(data => {
+                const botMessage = data.response || "서버에서 응답이 없습니다.";
+                appendBotMessage(botMessage);
+            })
+            .catch(error => {
+                console.error("Error sending message:", error);
+                appendBotMessage("오류가 발생했습니다. 다시 시도해 주세요.");
+            });
+    }
+
+    document.getElementById('new-chat-btn').addEventListener('click', () => {
+        // 기본 제목 설정
+        const defaultTitle = "새로운 채팅";
+
+        // 서버에 새 채팅 생성 요청
+        fetch('/chat-summary/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: defaultTitle })
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("새 채팅 생성 실패");
+                }
+                return response.text();
+            })
+            .then(message => {
+
+                // 첫 채팅 화면으로 초기화
+                initializeChat();
+                loadChatSummaries(); // 채팅 목록 갱신
+            })
+            .catch(error => {
+                console.error("Error creating new chat:", error);
+                alert("새 채팅 생성 중 오류가 발생했습니다.");
+            });
+    });
+
+    // 새로운 채팅 화면 초기화
+    function initializeChat() {
+        const chatBox = document.getElementById('chat-box');
+        chatBox.innerHTML = `
+        <div class="message bot-message">
+            안녕하세요! 새 채팅을 시작했습니다. 무엇을 도와드릴까요?
+        </div>
+    `;
+        chatHistory = []; // 대화 기록 초기화
+    }
+
+
+    let chatHistory = [];
+
+    // 메시지 추가
+    function appendUserMessage(message) {
+        const chatBox = document.getElementById('chat-box');
+        const userMessageDiv = document.createElement('div');
+        userMessageDiv.classList.add('message', 'user-message');
+        userMessageDiv.innerText = message;
+        chatBox.appendChild(userMessageDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        addToChatHistory(message, null);
+    }
+
+    function appendBotMessage(message) {
+        const chatBox = document.getElementById('chat-box');
+        const botMessageDiv = document.createElement('div');
+        botMessageDiv.classList.add('message', 'bot-message');
+        botMessageDiv.innerText = message;
+        chatBox.appendChild(botMessageDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        if (chatHistory.length > 0) {
+            chatHistory[chatHistory.length - 1].bot = message;
+        }
+    }
+
+    // 대화 저장
+    function addToChatHistory(userMessage, botMessage) {
+        chatHistory.push({ user: userMessage, bot: botMessage });
+    }
+
+    // 대화 요약 불러오기
+    function loadChatSummaries() {
+        fetch('/chat-summary/list')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("대화 요약 로드 실패");
+                }
+                return response.json();
+            })
+            .then(data => {
+                const summaryList = document.getElementById("summary-list");
+                summaryList.innerHTML = ""; // 기존 목록 초기화
+                data.forEach(summary => {
+                    const item = document.createElement("div");
+                    item.innerHTML = `
+                    <div class="chat-summary-item">
+                        <span>${summary.title}</span>
+                        <button onclick="deleteChatSummary(${summary.id}, event)">삭제</button>
+                        <button onclick="viewChatDetails(${summary.id})">보기</button>
+                    </div>
+                `;
+                    summaryList.appendChild(item);
+                });
+            })
+            .catch(error => console.error("Error loading summaries:", error));
+    }
+
+
+
+
+    // 대화 삭제
+    function deleteChatSummary(id, event) {
+        // 이벤트 객체가 전달되었는지 확인
+        if (event) {
+            alert("대화를 삭제하시겠습니까?");
+            event.stopPropagation(); // 삭제 버튼 클릭 시 요약 클릭 이벤트 중단
+        }
+
+        // 삭제 요청을 서버로 전송
+        fetch(`/chat-summary/delete/${id}`, {
+            method: "DELETE",
+        })
+            .then(response => {
+                if (response.ok) {
+                    alert("대화가 삭제되었습니다.");
+                    loadChatSummaries(); // 삭제 후 목록 다시 로드
+                } else {
+                    alert("삭제에 실패했습니다.");
+                }
+            })
+            .catch(error => console.error("Error:", error));
+    }
+
+
+
+    window.addEventListener("beforeunload", () => {
+        if (chatHistory.length > 0) {
+            const requestData = {
+                title: chatHistory[0]?.user || "대화 요약",
+                chatHistory: chatHistory,
+            };
+
+            fetch("/chat-summary/save", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(requestData),
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        console.error("대화 저장 실패:", response.statusText);
+                    }
+                })
+                .catch(error => console.error("대화 저장 요청 중 오류:", error));
+        }
+    });
+
+
+
+</script>
+</body>
+</html>

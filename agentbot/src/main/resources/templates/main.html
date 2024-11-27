@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+₩
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WOORIFI</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="/css/common.css"> <!-- 공통 스타일 -->
+  <style>
+
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      scroll-behavior: smooth; /* 부드러운 스크롤 */
+    }
+    /* 각 섹션의 기본 스타일 */
+    .section {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #050000;
+      text-align: center;
+      padding-top: 60px;
+    }
+
+    /* 텍스트 애니메이션 */
+    .intro-text {
+      opacity: 0;
+      animation: fadeIn 2s ease forwards;
+      font-size: 3.0em; /* 글자 크기 확대 */
+      color: #050000;
+      margin-top: 300px;
+    }
+
+    .sub-text {
+      opacity: 0;
+      animation: fadeIn 2.5s ease forwards 1s;
+      font-size: 3.0em; /* 글자 크기 확대 */
+      color: #050000;
+      margin-top: 5px;
+      margin-bottom: 15px;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* 각 섹션별 배경 이미지 설정 */
+    .section-1 {
+      background-image: url('/image.png');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+    }
+
+    .section-2 {
+      background-color: rgba(240, 248, 255, 0.8); /* 하늘한 회색과 투명도 적용 */
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      padding: 40px; /* 섹션 여백 추가 */
+    }
+
+
+    .section-3 {
+      background-image: url('/image.png');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+    }
+
+    .section-3 h2 {
+      font-size: 2.5em; /* 글자 크기 확대 */
+      color: #333;
+      margin-bottom: 40px;
+    }
+
+    .card-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      max-width: 1200px;
+      margin: 20px auto;
+
+    }
+
+    .card {
+      background: #ffffff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 10px;
+      padding: 20px;
+      text-align: left;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .card h3 {
+      font-size: 1.7em;
+      margin-bottom: 10px;
+      color: #0056b3;
+    }
+
+    .card p {
+      font-size: 1.2em;
+      color: #333333;
+      line-height: 1.6;
+    }
+
+    /* 메인 버튼 스타일 */
+    .main-button {
+      display: inline-flex;
+      align-items: center;
+      padding: 20px 50px; /* 버튼 크기 확대 */
+      font-size: 2em; /* 버튼 글자 크기 확대 */
+      color: #ffffff;
+      background-color: rgb(54, 86, 244);
+      border-radius: 10px;
+      text-decoration: none;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+      transition: background-color 0.3s ease;
+      margin-top: 50px;
+    }
+
+    .main-button:hover {
+      background-color: rgba(0, 86, 179, 0.8);
+    }
+
+    .icon {
+    }
+
+    .description-text {
+      font-size: 2.5em; /* 글자 크기 */
+      line-height: 1.5; /* 줄 간격 */
+      font-weight: 600; /* 글자 두께 */
+      color: #050000; /* 글자 색상 */
+      text-align: center; /* 중앙 정렬 */
+      margin: 0 auto; /* 상하 여백 */
+      padding: 20px; /* 텍스트 주위 여백 */
+    }
+
+    /* 반응형 스타일 */
+    @media (max-width: 768px) {
+      .main-button {
+        font-size: 1.8em;
+        padding: 15px 40px;
+      }
+      .intro-text {
+        font-size: 2.5em;
+      }
+      .sub-text {
+        font-size: 2.2em;
+      }
+    }
+
+    /* 버튼 스타일 */
+    .scroll-button {
+      position: absolute;
+      bottom: 20px;
+      background-color: rgba(0, 0, 0, 0.5);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      font-size: 1.5em;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .scroll-button:hover {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+
+    .scroll-button i {
+      pointer-events: none; /* 아이콘 클릭 시 버튼 클릭 방지 */
+    }
+
+    /* 기본적으로 약간 투명하게 */
+    .scroll-button {
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+
+<!-- 네비게이션 바 -->
+<div th:replace="~{partials/navbar :: navbar}" class="navbar"></div>
+
+<!-- 첫 번째 섹션: 메인 페이지 -->
+<div class="section section-1">
+
+<div class="intro-text">맞춤형 금융 서비스</div>
+<div class="sub-text">WOORI-FI 금융 에이전트</div>
+<a href="/asset-status" class="main-button"><i class="fas fa-comments icon"></i>내 자산 관리하러 가기</a>
+
+</div>
+
+<!-- 두 번째 섹션: 다른 콘텐츠 추가 가능 -->
+<div class="section section-2">
+  <div class="description-text">
+    내 모든 금융 내역을 한눈에 조회하고 한 곳에서 관리하세요.<br>
+    이제껏 경험 못 했던 쉽고 편리한 금융 서비스<br>
+    금융 에이전트와 함께라면 당신의 일상이 새로워질 거예요.
+  </div>
+  <button class="scroll-button" onclick="document.querySelector('.section-2').scrollIntoView({behavior: 'smooth'})">
+    <i class="fas fa-chevron-down"></i>
+  </button>
+
+</div>
+
+
+<!-- 세 번째 섹션: 추가 콘텐츠 -->
+<!-- 세 번째 섹션 -->
+<div class="section section-3">
+
+  <h2>WOORIFI 금융 에이전트의 다양한 서비스를 만나보세요.</h2>
+  <div class="card-container">
+    <!-- AGENT 카드 -->
+    <div class="card">
+      <h3>AGENT</h3>
+      <p>사용자의 마이데이터를 이용하여 맞춤형 서비스를 추천받을 수 있게 합니다.</p>
+    </div>
+
+    <!-- 금융상품 카드 -->
+    <div class="card">
+      <h3>금융상품</h3>
+      <p>우리은행의 금융상품들이 모여있습니다.</p>
+    </div>
+
+    <!-- 자산 현황 카드 -->
+    <div class="card">
+      <h3>자산 현황</h3>
+      <p>내 자산유형과 나랑 비슷한 사람들이 어떤 자산을 형성하고 있는지 확인해볼 수 있습니다.</p>
+
+    </div>
+
+    <!-- 외화 구매 카드 -->
+    <div class="card">
+      <h3>외화 구매</h3>
+      <p>목표 금액을 설정 및 예약하여 외화거래를 진행할 수 있습니다.</p>
+    </div>
+
+    <!-- 추천 뉴스 카드 -->
+    <div class="card">
+      <h3>추천 뉴스</h3>
+      <p>실시간 주요 경제뉴스를 보여줍니다.</p>
+    </div>
+
+    <!-- FAQ 카드 -->
+    <div class="card">
+      <h3>자주 묻는 질문</h3>
+      <p>자주 묻는 질문과 답변을 확인할 수 있습니다.</p>
+
+
+    </div>
+
+
+  </div>
+
+</div>
+
+
+</body>
+</html>

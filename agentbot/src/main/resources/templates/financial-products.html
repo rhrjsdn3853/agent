@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>금융 상품</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="/css/common.css"> <!-- 공통 스타일 -->
+  <style>
+    body {
+      background-color: rgb(255, 255, 255);
+      margin: 0;
+    }
+
+    .container {
+      margin-top: 80px;
+      padding: 20px;
+      background-color: rgb(255, 255, 255);
+      border-radius: 10px;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 28px;
+      color: #050000;
+      margin-bottom: 20px;
+    }
+
+    .search-bar {
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .search-bar input {
+      width: 80%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+
+    .list-group {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    .list-group-item {
+      background-color: rgb(255, 255, 255);
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+      text-align: left;
+    }
+
+    .list-group-item.hidden {
+      display: none;
+    }
+
+    .list-group-item:hover {
+      background-color: #f1f9ff;
+      box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2);
+    }
+
+    .list-group-item h4 {
+      color: #007bff;
+      margin-top: 0;
+      margin-bottom: 15px;
+      font-size: 24px;
+      text-align: center;
+    }
+
+    .load-more {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .load-more button {
+      background-color: #007bff;
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: bold;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.3s ease;
+    }
+
+    .load-more button:hover {
+      background-color: #0056b3;
+      transform: translateY(-2px);
+    }
+
+    .load-more button:active {
+      background-color: #004a99;
+    }
+
+    @media (min-width: 768px) {
+      .list-group {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+      }
+
+      h1 {
+        font-size: 32px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div th:replace="~{partials/navbar :: navbar}"></div>
+
+<div class="container">
+  <h1>예적금</h1>
+
+  <!-- 검색 바 -->
+  <div class="search-bar">
+    <input type="text" id="searchInput" onkeyup="filterItems()" placeholder="제목이나 상세설명을 검색하세요">
+  </div>
+
+  <div class="list-group">
+    <div th:each="product, iterStat : ${products}"
+         th:classappend="${iterStat.index >= 6 ? 'hidden' : ''}"
+         class="list-group-item">
+      <h4 th:text="${product.title}">상품명</h4>
+      <p><strong>은행:</strong> <span th:text="${product.bank}">우리은행</span></p>
+      <p><strong>최고 금리:</strong> <span th:text="${product.maxRate}">5.5%</span></p>
+      <p><strong>기본 금리:</strong> <span th:text="${product.baseRate}">2.0%</span></p>
+      <p><strong>상세 설명:</strong> <span th:text="${product.details}">이 상품은...</span></p>
+    </div>
+  </div>
+
+  <!-- 더보기 버튼 -->
+  <div class="load-more">
+    <button onclick="showMore()">더보기</button>
+  </div>
+</div>
+
+<script>
+  function filterItems() {
+    const input = document.getElementById('searchInput').value.toLowerCase();
+    const items = document.querySelectorAll('.list-group-item');
+    let visibleCount = 0;
+
+    items.forEach(item => {
+      const title = item.querySelector('h4').textContent.toLowerCase();
+      const details = item.querySelector('p:last-child span').textContent.toLowerCase();
+
+      if (title.includes(input) || details.includes(input)) {
+        item.style.display = 'block';
+        if (visibleCount >= 6) {
+          item.classList.add('hidden');
+        } else {
+          item.classList.remove('hidden');
+          visibleCount++;
+        }
+      } else {
+        item.style.display = 'none';
+      }
+    });
+
+    // 더보기 버튼 상태 업데이트
+    if (document.querySelectorAll('.list-group-item.hidden').length === 0) {
+      document.querySelector('.load-more').style.display = 'none';
+    } else {
+      document.querySelector('.load-more').style.display = 'flex';
+    }
+  }
+
+  function showMore() {
+    const hiddenItems = document.querySelectorAll('.list-group-item.hidden');
+    hiddenItems.forEach((item, index) => {
+      if (index < 4) {
+        item.classList.remove('hidden');
+      }
+    });
+
+    if (document.querySelectorAll('.list-group-item.hidden').length === 0) {
+      document.querySelector('.load-more').style.display = 'none';
+    }
+  }
+</script>
+</body>
+</html>
